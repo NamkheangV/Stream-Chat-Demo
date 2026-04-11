@@ -133,16 +133,16 @@ const previewMsgs = computed(() => [
         <header class="page-header">
             <div class="header-inner">
                 <div class="logo-mark">
-                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                    <!-- <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
                         <rect x="0" y="0" width="12" height="12" rx="3" fill="var(--accent-preview)" />
                         <rect x="16" y="0" width="12" height="12" rx="3" fill="var(--accent-preview)" opacity="0.5" />
                         <rect x="0" y="16" width="12" height="12" rx="3" fill="var(--accent-preview)" opacity="0.5" />
                         <rect x="16" y="16" width="12" height="12" rx="3" fill="var(--accent-preview)" />
-                    </svg>
-                    <span class="logo-text">Overlay<em>Studio</em></span>
+                    </svg> -->
+                    <span class="logo-text">👻 Chat<em>Widget</em> Demo</span>
                 </div>
 
-                <nav class="header-nav">
+                <!-- <nav class="header-nav">
                     <NuxtLink to="/" class="nav-btn" target="_blank">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
@@ -152,7 +152,7 @@ const previewMsgs = computed(() => [
                         </svg>
                         เปิด Overlay
                     </NuxtLink>
-                </nav>
+                </nav> -->
             </div>
         </header>
 
@@ -394,8 +394,8 @@ const previewMsgs = computed(() => [
     --accent-preview: v-bind(accentCssVar);
     --radius: 14px;
     --radius-sm: 8px;
-    --font-ui: 'Syne', system-ui, sans-serif;
-    --font-body-ui: 'DM Sans', system-ui, sans-serif;
+    --font-ui: 'Noto Serif JP', serif;
+    --font-body-ui: 'Noto Sans Thai Looped', sans-serif;
 
     min-height: 100vh;
     background: var(--bg);
@@ -594,7 +594,7 @@ const previewMsgs = computed(() => [
 .input-sm {
     padding: 7px 10px;
     font-size: 12px;
-    font-family: 'Courier New', monospace;
+    font-family: 'Noto Sans Thai Looped', sans-serif;
 }
 
 /* ── Color swatch ────────────────────────────────────────── */
@@ -879,7 +879,7 @@ const previewMsgs = computed(() => [
 }
 
 .obs-url-text {
-    font-family: 'Courier New', 'Consolas', monospace;
+    font-family: 'Noto Sans Thai Looped', sans-serif;
     font-size: 11px;
     color: var(--text-muted);
     white-space: nowrap;

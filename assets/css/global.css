@@ -8,8 +8,8 @@
 
 /* ── Default design tokens ───────────────────────────────── */
 :root {
-    --font-display: 'Syne', 'Noto Sans Thai Looped', sans-serif;
-    --font-body: 'DM Sans', 'Noto Sans Thai Looped', system-ui, sans-serif;
+    --font-display: 'Noto Serif JP', serif;
+    --font-body: 'Noto Sans Thai Looped', sans-serif;
 
     /* Bubble */
     --bubble-bg-r: 10;
