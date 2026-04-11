@@ -6,57 +6,60 @@
 
 /* ── Default design tokens ───────────────────────────────── */
 :root {
-  --font-display:   'Syne', 'Noto Sans Thai', sans-serif;
-  --font-body:      'DM Sans', 'Noto Sans Thai', system-ui, sans-serif;
+    --font-display: 'Syne', 'Noto Sans Thai', sans-serif;
+    --font-body: 'DM Sans', 'Noto Sans Thai', system-ui, sans-serif;
 
-  /* Bubble */
-  --bubble-bg-r:      10;
-  --bubble-bg-g:      12;
-  --bubble-bg-b:      22;
-  --bubble-opacity:   0.82;
-  --bubble-bg:        rgba(var(--bubble-bg-r), var(--bubble-bg-g), var(--bubble-bg-b), var(--bubble-opacity));
+    /* Bubble */
+    --bubble-bg-r: 10;
+    --bubble-bg-g: 12;
+    --bubble-bg-b: 22;
+    --bubble-opacity: 0.82;
+    --bubble-bg: rgba(var(--bubble-bg-r), var(--bubble-bg-g), var(--bubble-bg-b), var(--bubble-opacity));
 
-  --bubble-border:    rgba(255, 255, 255, 0.07);
-  --bubble-radius:    16px;
-  --bubble-blur:      14px;
-  --bubble-shadow:    0 4px 24px rgba(0,0,0,0.45);
+    --bubble-border: rgba(255, 255, 255, 0.07);
+    --bubble-radius: 16px;
+    --bubble-blur: 14px;
+    --bubble-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
 
-  /* Accent bar (เส้นซ้าย bubble) */
-  --accent-r:         126;
-  --accent-g:         207;
-  --accent-b:         220;
-  --accent-opacity:   0.55;
-  --accent-color:     rgba(var(--accent-r), var(--accent-g), var(--accent-b), var(--accent-opacity));
+    /* Accent bar (เส้นซ้าย bubble) */
+    --accent-r: 126;
+    --accent-g: 207;
+    --accent-b: 220;
+    --accent-opacity: 0.55;
+    --accent-color: rgba(var(--accent-r), var(--accent-g), var(--accent-b), var(--accent-opacity));
 
-  /* Text */
-  --text-color:       #dde3ee;
-  --font-size-msg:    14px;
-  --font-size-user:   13px;
+    /* Text */
+    --text-color: #dde3ee;
+    --font-size-msg: 14px;
+    --font-size-user: 13px;
 
-  /* Chat layout */
-  --chat-width:       340px;
-  --msg-gap:          10px;
+    /* Chat layout */
+    --chat-width: 340px;
+    --msg-gap: 10px;
 
-  /* Role colors */
-  --color-broadcaster: #FFD700;
-  --color-moderator:   #00E676;
-  --color-vip:         #E040FB;
-  --color-subscriber:  #40C4FF;
-  --color-default:     #FFFFFF;
+    /* Role colors */
+    --color-broadcaster: #FFD700;
+    --color-moderator: #00E676;
+    --color-vip: #E040FB;
+    --color-subscriber: #40C4FF;
+    --color-default: #FFFFFF;
 
-  /* Sizes */
-  --emote-size:       26px;
-  --badge-size:       16px;
+    /* Sizes */
+    --emote-size: 26px;
+    --badge-size: 16px;
 }
 
 /* ── Base reset ───────────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-html, body {
-  background: transparent;
-  font-family: var(--font-body);
+html,
+body {
+    background: transparent;
+    font-family: var(--font-body);
 }

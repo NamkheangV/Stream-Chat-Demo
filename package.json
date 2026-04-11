@@ -7,14 +7,14 @@
         "dev": "nuxt dev",
         "generate": "nuxt generate",
         "preview": "nuxt preview",
-        "deploy": "nuxt generate && cp -r .output/public/. docs/"
+        "deploy": "nuxt generate && node -e \"require(\"fs\").writeFileSync(\"docs/.nojekyll\",\"\")\"",
+        "deploy:win": "nuxt generate && rmdir /s /q docs & xcopy /e /i /y .output\\public docs"
     },
     "dependencies": {
         "tmi.js": "^1.8.5"
     },
     "devDependencies": {
         "@nuxtjs/tailwindcss": "^6.12.2",
-        "@types/tmi.js": "^1.8.6",
         "nuxt": "^3.13.2",
         "vue": "^3.5.11"
     }

@@ -40,7 +40,10 @@ npm run dev
 4. Height: `700` (หรือตามต้องการ)
 5. Custom CSS:
    ```css
-   body { background: transparent !important; overflow: hidden; }
+   body {
+     background: transparent !important;
+     overflow: hidden;
+   }
    ```
 6. ✅ **Shutdown source when not visible**
 7. ✅ **Refresh browser when scene becomes active**
@@ -48,8 +51,9 @@ npm run dev
 ## 🎨 ปรับแต่ง
 
 เปิด `http://localhost:3000/settings` เพื่อ:
+
 - เปลี่ยนสี bubble + opacity
-- เปลี่ยนสี accent bar + opacity  
+- เปลี่ยนสี accent bar + opacity
 - ปรับสี text / ขนาด font
 - ปรับความกว้าง / ช่องว่างระหว่าง message
 - ปรับสี username ตาม role (broadcaster/mod/vip/sub)
