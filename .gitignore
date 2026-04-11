@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Nuxt build
+.nuxt/
+.output/
+
+# Env files
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

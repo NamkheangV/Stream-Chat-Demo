@@ -180,12 +180,12 @@ function connect(channel: string) {
     reconnectTimer = setTimeout(() => connect(channel), 5000)
   })
 
-  client.on('message', (_ch, tags, message) => {
-    const { icons, nameColor } = parseBadges(tags.badges as Record<string, string>)
+  client.on('message', (_ch: string, tags: any, message: string, _self: boolean) => {
+    const { icons, nameColor } = parseBadges(tags.badges)
     chats.value.push({
       id: Date.now(),
       user: tags['display-name'] || tags.username || 'Unknown',
-      html: parseEmotes(message, tags.emotes as any),
+      html: parseEmotes(message, tags.emotes),
       badges: icons,
       nameColor,
     })
