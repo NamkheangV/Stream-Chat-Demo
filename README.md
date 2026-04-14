@@ -72,7 +72,7 @@ npm run dev
 ```bash
 # Build static files
 1. npm run generate
-2. type nul > .nojekyll 
+2. New-Item docs/.nojekyll -ItemType File   # (ถ้าใช้ PowerShell) สร้างไฟล์ .nojekyll เพื่อให้ GitHub Pages แสดงไฟล์ในโฟลเดอร์ที่ขึ้นต้นด้วยจุดได้
 
 # Upload โฟลเดอร์ .output/public/ ขึ้น:
 # - GitHub Pages
