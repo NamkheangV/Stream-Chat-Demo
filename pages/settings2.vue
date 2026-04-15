@@ -3,8 +3,6 @@ const { settings: s, save, reset, load, buildObsUrl } = useOverlaySettings()
 
 onMounted(() => load())
 
-const modal = ref<boolean>(false)
-
 /* OBS URL */
 const obsUrl = computed(() => {
     if (typeof window === 'undefined') return ''
@@ -58,8 +56,8 @@ function debouncedSave() {
 ════════════════════════════════════════════ */
 const previewBgStyle = computed(() => {
     const m = s.value.previewBgMode
-    if (m === 'none') return { background: 'transparent' }
-    if (m === 'solid') return { background: s.value.previewBgColor }
+    if (m === 'none')     return { background: 'transparent' }
+    if (m === 'solid')    return { background: s.value.previewBgColor }
     if (m === 'image' && s.value.previewBgImage)
         return { backgroundImage: `url(${s.value.previewBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     // gradient (default)
@@ -261,33 +259,290 @@ const previewMsgs = computed(() => [
 
         <!--  MAIN -->
         <main class="main-layout">
-            <!-- PREVIEW -->
-            <div class="preview-col">
-                <div class="preview-header">
-                    <div class="w-full flex items-baseline gap-[10px]">
-                        <span class="preview-label"><span class="panel-icon">💐 </span> Chat Preview</span>
-                        <span class="preview-hint">ปรับแต่งเพื่อดูผลลัพธ์</span>
+            <div class="settings-col">
+                <!-- Twitch -->
+                <section class="panel">
+                    <h2 class="panel-title"><span class="panel-icon">🎮</span> Twitch</h2>
+                    <div class="field">
+                        <label class="field-label">Channel name</label>
+                        <input v-model="s.channel" class="input" placeholder="your_channel" @input="debouncedSave" />
                     </div>
-
-                    <div class="flex items-center gap-2">
-                        <div class="obs-url-box">
-                            <code class="obs-url-text">{{ obsUrl }}</code>
+                    <div class="field">
+                        <label class="field-label">Max messages shown</label>
+                        <div class="slider-row">
+                            <input type="range" v-model.number="s.maxMessages" min="1" max="20" class="slider"
+                                @input="debouncedSave" />
+                            <span class="slider-val">{{ s.maxMessages }}</span>
                         </div>
+                    </div>
+                </section>
 
-                        <button class="p-2 rounded-md" @click="handleCopyUrl">
-                            <svg v-if="copied === false" width="15" height="15" viewBox="0 0 24 24" fill="none"
-                                stroke="currentColor" stroke-width="2.5">
-                                <rect x="9" y="9" width="13" height="13" rx="2" />
-                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                            </svg>
-                            <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2.5">
-                                <polyline points="20,6 9,17 4,12" />
-                            </svg>
+                <!-- Chat Bubble -->
+                <section class="panel">
+                    <h2 class="panel-title"><span class="panel-icon">💬</span> Chat Bubble</h2>
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Background color</label>
+                            <div class="color-row">
+                                <input type="color" v-model="s.bubbleBgColor" class="color-swatch"
+                                    @input="debouncedSave" />
+                                <input v-model="s.bubbleBgColor" class="input input-sm" @input="debouncedSave" />
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Opacity {{ s.bubbleOpacity }}%</label>
+                            <input type="range" v-model.number="s.bubbleOpacity" min="0" max="100" class="slider"
+                                @input="debouncedSave" />
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Accent bar color</label>
+                            <div class="color-row">
+                                <input type="color" v-model="s.accentColor" class="color-swatch"
+                                    @input="debouncedSave" />
+                                <input v-model="s.accentColor" class="input input-sm" @input="debouncedSave" />
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Accent opacity {{ s.accentOpacity }}%</label>
+                            <input type="range" v-model.number="s.accentOpacity" min="0" max="100" class="slider"
+                                @input="debouncedSave" />
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Typography -->
+                <section class="panel">
+                    <h2 class="panel-title"><span class="panel-icon">✏️</span> Typography</h2>
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Text color</label>
+                            <div class="color-row">
+                                <input type="color" v-model="s.textColor" class="color-swatch" @input="debouncedSave" />
+                                <input v-model="s.textColor" class="input input-sm" @input="debouncedSave" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Message size {{ s.fontSizeMsg }}px</label>
+                            <input type="range" v-model.number="s.fontSizeMsg" min="10" max="24" class="slider"
+                                @input="debouncedSave" />
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Username size {{ s.fontSizeUser }}px</label>
+                            <input type="range" v-model.number="s.fontSizeUser" min="10" max="22" class="slider"
+                                @input="debouncedSave" />
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Layout -->
+                <section class="panel">
+                    <h2 class="panel-title"><span class="panel-icon">📐</span> Layout</h2>
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Width {{ s.chatWidth }}px</label>
+                            <input type="range" v-model.number="s.chatWidth" min="200" max="600" class="slider"
+                                @input="debouncedSave" />
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Gap between msgs {{ s.msgGap }}px</label>
+                            <input type="range" v-model.number="s.msgGap" min="4" max="32" class="slider"
+                                @input="debouncedSave" />
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Username colors -->
+                <section class="panel">
+                    <h2 class="panel-title"><span class="panel-icon">⚙️</span> Username colors</h2>
+                    <div class="role-grid">
+                        <div v-for="role in roleFields" :key="role.key" class="field">
+                            <label class="field-label">{{ role.label }}</label>
+                            <div class="color-row">
+                                <input type="color" v-model="(s as any)[role.key]" class="color-swatch"
+                                    @input="debouncedSave" />
+                                <span class="role-preview" :style="{ color: (s as any)[role.key] }">{{ role.label
+                                }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ══════════════════════════════════════
+             PREVIEW BACKGROUND
+        ══════════════════════════════════════ -->
+                <section class="panel">
+                    <h2 class="panel-title"><span class="panel-icon">🖼️</span> Preview Background</h2>
+
+                    <!-- Mode tabs -->
+                    <div class="bg-mode-tabs">
+                        <button v-for="m in (['gradient','solid','image','none'] as const)" :key="m"
+                            class="bg-mode-tab" :class="{ active: s.previewBgMode === m }"
+                            @click="s.previewBgMode = m; debouncedSave()">
+                            {{ m === 'gradient' ? '🌈 Gradient' : m === 'solid' ? '⬛ Solid' : m === 'image' ? '🖼 Image' : '⬜ None' }}
                         </button>
                     </div>
+
+                    <!-- Gradient controls -->
+                    <template v-if="s.previewBgMode === 'gradient'">
+                        <div class="field-row">
+                            <div class="field">
+                                <label class="field-label">Color 1</label>
+                                <div class="color-row">
+                                    <input type="color" v-model="s.previewBgColor" class="color-swatch" @input="debouncedSave" />
+                                    <input v-model="s.previewBgColor" class="input input-sm" @input="debouncedSave" />
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Color 2</label>
+                                <div class="color-row">
+                                    <input type="color" v-model="s.previewBgColor2" class="color-swatch" @input="debouncedSave" />
+                                    <input v-model="s.previewBgColor2" class="input input-sm" @input="debouncedSave" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Angle {{ s.previewBgAngle }}°</label>
+                            <input type="range" v-model.number="s.previewBgAngle" min="0" max="360" class="slider" @input="debouncedSave" />
+                        </div>
+                    </template>
+
+                    <!-- Solid controls -->
+                    <template v-if="s.previewBgMode === 'solid'">
+                        <div class="field">
+                            <label class="field-label">Color</label>
+                            <div class="color-row">
+                                <input type="color" v-model="s.previewBgColor" class="color-swatch" @input="debouncedSave" />
+                                <input v-model="s.previewBgColor" class="input input-sm" @input="debouncedSave" />
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Image upload controls -->
+                    <template v-if="s.previewBgMode === 'image'">
+                        <div class="bg-upload-area">
+                            <img v-if="s.previewBgImage" :src="s.previewBgImage" class="bg-upload-preview" alt="preview bg" />
+                            <div v-else class="bg-upload-placeholder">
+                                <span>ยังไม่มีรูป</span>
+                            </div>
+                            <div class="bg-upload-actions">
+                                <label class="badge-upload-btn" style="width:auto; padding: 7px 14px;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                                        <polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                                    </svg>
+                                    Upload Image
+                                    <input type="file" accept="image/*" class="badge-file-input" @change="handlePreviewBgUpload" />
+                                </label>
+                                <button v-if="s.previewBgImage" class="btn btn-ghost" style="padding:7px 12px; font-size:12px;" @click="clearPreviewBgImage">✕ ลบรูป</button>
+                            </div>
+                        </div>
+                    </template>
+                </section>
+
+                <!-- ══════════════════════════════════════
+             BADGE Custom — section ใหม่
+             อัปโหลดรูป badge แทน Twitch CDN
+             รูปจะถูกแปลงเป็น Base64 และ encode
+             ลง URL พร้อมกับ settings อื่น ๆ
+        ══════════════════════════════════════ -->
+                <section class="panel">
+                    <h2 class="panel-title"><span class="panel-icon">🏷️</span> Badge Custom</h2>
+                    <p class="panel-desc">
+                        รองรับ .png และ .svg ขนาดไม่เกิน 72×72 pixel
+                    </p>
+
+                    <div class="badge-grid">
+                        <div v-for="bf in badgeFields" :key="bf.key" class="badge-item">
+                            <!-- Preview รูปปัจจุบัน -->
+                            <div class="badge-preview-wrap">
+                                <img :src="(s.badgeImages as any)[bf.key]" class="badge-preview-img" :alt="bf.label"
+                                    @error="(e) => (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'32\' height=\'32\'><rect width=\'32\' height=\'32\' fill=\'%23333\' rx=\'6\'/><text x=\'50%25\' y=\'55%25\' text-anchor=\'middle\' dominant-baseline=\'middle\' font-size=\'14\' fill=\'%23666\'>?</text></svg>'" />
+                                <!-- indicator ว่าเป็น custom หรือ default -->
+                                <span class="badge-source-tag"
+                                    :class="(s.badgeImages as any)[bf.key].startsWith('data:') ? 'custom' : 'default'">
+                                    {{ (s.badgeImages as any)[bf.key].startsWith('data:') ? 'custom' : 'default' }}
+                                </span>
+                            </div>
+
+                            <div class="badge-info">
+                                <span class="badge-label">{{ bf.label }}</span>
+                                <span v-if="bf.tier" class="badge-tier">{{ bf.tier }}</span>
+                            </div>
+
+                            <!-- Upload button -->
+                            <label class="badge-upload-btn">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                                    <polyline points="17 8 12 3 7 8" />
+                                    <line x1="12" y1="3" x2="12" y2="15" />
+                                </svg>
+                                Upload
+                                <input type="file" accept="image/png,image/svg+xml" class="badge-file-input"
+                                    @change="handleBadgeUpload(bf.key, $event)" />
+                            </label>
+
+                            <!-- Reset กลับ default -->
+                            <button v-if="(s.badgeImages as any)[bf.key].startsWith('data:')" class="badge-reset-btn"
+                                @click="resetBadge(bf.key)" title="Reset กลับ default">✕</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- PREVIEW -->
+            <div class="preview-col">
+                <!-- Actions -->
+                <div class="actions-row">
+                    <button class="btn btn-ghost" @click="handleReset">Reset to default</button>
+                    <button class="btn btn-primary" @click="handleSave">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                            <polyline points="17,21 17,13 7,13 7,21" />
+                            <polyline points="7,3 7,8 15,8" />
+                        </svg>
+                        {{ saved ? '✓ Saved!' : 'Save & Preview' }}
+                    </button>
                 </div>
 
+                <!-- OBS URL Card -->
+                <div class="obs-url-card">
+                    <div class="obs-url-header">
+                        <span class="obs-url-title">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="2" y="3" width="20" height="14" rx="2" />
+                                <line x1="8" y1="21" x2="16" y2="21" />
+                                <line x1="12" y1="17" x2="12" y2="21" />
+                            </svg>
+                            OBS Browser Source URL
+                        </span>
+                        <span class="obs-url-badge">copy แล้ววางใน OBS</span>
+                    </div>
+                    <div class="obs-url-box">
+                        <code class="obs-url-text">{{ obsUrl }}</code>
+                    </div>
+                    <button class="btn btn-obs" @click="handleCopyUrl">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <rect x="9" y="9" width="13" height="13" rx="2" />
+                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                        </svg>
+                        {{ copied ? '✓ Copied!' : 'Copy URL' }}
+                    </button>
+                </div>
+
+
+
+                <div class="preview-header">
+                    <span class="preview-label"><span class="panel-icon">💐 </span> Chat Preview</span>
+                    <span class="preview-hint">ปรับแต่งเพื่อดูผลลัพธ์</span>
+                </div>
                 <div class="preview-stage">
                     <div class="stream-bg" :style="previewBgStyle" />
                     <div class="preview-overlay" :style="{ width: s.chatWidth + 'px', gap: s.msgGap + 'px' }">
@@ -311,247 +566,14 @@ const previewMsgs = computed(() => [
                         </div>
                     </div>
                 </div>
-
-                <!-- OBS URL Card -->
-                <!-- <div class="obs-url-card">
-                    <div class="obs-url-header">
-                        <span class="obs-url-title">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <rect x="2" y="3" width="20" height="14" rx="2" />
-                                <line x1="8" y1="21" x2="16" y2="21" />
-                                <line x1="12" y1="17" x2="12" y2="21" />
-                            </svg>
-                            OBS Browser Source URL
-                        </span>
-                        <span class="obs-url-badge">copy แล้ววางใน OBS</span>
-                    </div>
-
-                    <div class="obs-url-box">
-                        <code class="obs-url-text">{{ obsUrl }}</code>
-                    </div>
-
-                    <button class="btn btn-obs" @click="handleCopyUrl">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
-                            <rect x="9" y="9" width="13" height="13" rx="2" />
-                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                        </svg>
-                        {{ copied ? '✓ Copied!' : 'Copy URL' }}
-                    </button>
-                </div> -->
             </div>
 
-            <div class="flex flex-col gap-4">
-                <div class="actions-row">
-                    <button class="btn btn-ghost" @click="handleReset">Reset to default</button>
-                    <button class="btn btn-primary" @click="handleSave">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
-                            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-                            <polyline points="17,21 17,13 7,13 7,21" />
-                            <polyline points="7,3 7,8 15,8" />
-                        </svg>
-                        {{ saved ? '✓ Saved!' : 'Save & Preview' }}
-                    </button>
-                </div>
-
-                <div class="settings-col">
-                    <!-- Twitch -->
-                    <section class="panel">
-                        <h2 class="panel-title"><span class="panel-icon">🎮</span> Twitch</h2>
-                        <div class="field">
-                            <label class="field-label">Channel name</label>
-                            <input v-model="s.channel" class="input" placeholder="your_channel"
-                                @input="debouncedSave" />
-                        </div>
-                        <div class="field">
-                            <label class="field-label">Max messages shown</label>
-                            <div class="slider-row">
-                                <input type="range" v-model.number="s.maxMessages" min="1" max="20" class="slider"
-                                    @input="debouncedSave" />
-                                <span class="slider-val">{{ s.maxMessages }}</span>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Chat Bubble -->
-                    <section class="panel">
-                        <h2 class="panel-title"><span class="panel-icon">💬</span> Chat Bubble</h2>
-                        <div class="field-row">
-                            <div class="field">
-                                <label class="field-label">Background color</label>
-                                <div class="color-row">
-                                    <input type="color" v-model="s.bubbleBgColor" class="color-swatch"
-                                        @input="debouncedSave" />
-                                    <input v-model="s.bubbleBgColor" class="input input-sm" @input="debouncedSave" />
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Opacity {{ s.bubbleOpacity }}%</label>
-                                <input type="range" v-model.number="s.bubbleOpacity" min="0" max="100" class="slider"
-                                    @input="debouncedSave" />
-                            </div>
-                        </div>
-                        <div class="field-row">
-                            <div class="field">
-                                <label class="field-label">Accent bar color</label>
-                                <div class="color-row">
-                                    <input type="color" v-model="s.accentColor" class="color-swatch"
-                                        @input="debouncedSave" />
-                                    <input v-model="s.accentColor" class="input input-sm" @input="debouncedSave" />
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Accent opacity {{ s.accentOpacity }}%</label>
-                                <input type="range" v-model.number="s.accentOpacity" min="0" max="100" class="slider"
-                                    @input="debouncedSave" />
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Typography -->
-                    <section class="panel">
-                        <h2 class="panel-title"><span class="panel-icon">✏️</span> Typography</h2>
-                        <div class="field-row">
-                            <div class="field">
-                                <label class="field-label">Text color</label>
-                                <div class="color-row">
-                                    <input type="color" v-model="s.textColor" class="color-swatch"
-                                        @input="debouncedSave" />
-                                    <input v-model="s.textColor" class="input input-sm" @input="debouncedSave" />
-                                </div>
-                            </div>
-                        </div>
-                        <div class="field-row">
-                            <div class="field">
-                                <label class="field-label">Message size {{ s.fontSizeMsg }}px</label>
-                                <input type="range" v-model.number="s.fontSizeMsg" min="10" max="24" class="slider"
-                                    @input="debouncedSave" />
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Username size {{ s.fontSizeUser }}px</label>
-                                <input type="range" v-model.number="s.fontSizeUser" min="10" max="22" class="slider"
-                                    @input="debouncedSave" />
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Layout -->
-                    <section class="panel">
-                        <h2 class="panel-title"><span class="panel-icon">📐</span> Layout</h2>
-                        <div class="field-row">
-                            <div class="field">
-                                <label class="field-label">Width {{ s.chatWidth }}px</label>
-                                <input type="range" v-model.number="s.chatWidth" min="200" max="600" class="slider"
-                                    @input="debouncedSave" />
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Gap between msgs {{ s.msgGap }}px</label>
-                                <input type="range" v-model.number="s.msgGap" min="4" max="32" class="slider"
-                                    @input="debouncedSave" />
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- Username colors -->
-                    <section class="panel">
-                        <h2 class="panel-title"><span class="panel-icon">⚙️</span> Username colors</h2>
-                        <div class="role-grid">
-                            <div v-for="role in roleFields" :key="role.key" class="field">
-                                <label class="field-label">{{ role.label }}</label>
-                                <div class="color-row">
-                                    <input type="color" v-model="(s as any)[role.key]" class="color-swatch"
-                                        @input="debouncedSave" />
-                                    <span class="role-preview" :style="{ color: (s as any)[role.key] }">{{ role.label
-                                    }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- ══════════════════════════════════════
-             BADGE Custom — section ใหม่
-             อัปโหลดรูป badge แทน Twitch CDN
-             รูปจะถูกแปลงเป็น Base64 และ encode
-             ลง URL พร้อมกับ settings อื่น ๆ
-        ══════════════════════════════════════ -->
-                    <section class="panel">
-                        <h2 class="panel-title"><span class="panel-icon">🏷️</span> Badge Custom</h2>
-                        <p class="panel-desc">
-                            รองรับ .png และ .svg ขนาดไม่เกิน 72×72 pixel
-                        </p>
-
-                        <div class="badge-grid">
-                            <div v-for="bf in badgeFields" :key="bf.key" class="badge-item">
-                                <!-- Preview รูปปัจจุบัน -->
-                                <div class="badge-preview-wrap">
-                                    <img :src="(s.badgeImages as any)[bf.key]" class="badge-preview-img" :alt="bf.label"
-                                        @error="(e) => (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'32\' height=\'32\'><rect width=\'32\' height=\'32\' fill=\'%23333\' rx=\'6\'/><text x=\'50%25\' y=\'55%25\' text-anchor=\'middle\' dominant-baseline=\'middle\' font-size=\'14\' fill=\'%23666\'>?</text></svg>'" />
-                                    <!-- indicator ว่าเป็น custom หรือ default -->
-                                    <span class="badge-source-tag"
-                                        :class="(s.badgeImages as any)[bf.key].startsWith('data:') ? 'custom' : 'default'">
-                                        {{ (s.badgeImages as any)[bf.key].startsWith('data:') ? 'custom' : 'default' }}
-                                    </span>
-                                </div>
-
-                                <div class="badge-info">
-                                    <span class="badge-label">{{ bf.label }}</span>
-                                    <span v-if="bf.tier" class="badge-tier">{{ bf.tier }}</span>
-                                </div>
-
-                                <!-- Upload button -->
-                                <label class="badge-upload-btn">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2.5">
-                                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                                        <polyline points="17 8 12 3 7 8" />
-                                        <line x1="12" y1="3" x2="12" y2="15" />
-                                    </svg>
-                                    Upload
-                                    <input type="file" accept="image/png,image/svg+xml" class="badge-file-input"
-                                        @change="handleBadgeUpload(bf.key, $event)" />
-                                </label>
-
-                                <!-- Reset กลับ default -->
-                                <button v-if="(s.badgeImages as any)[bf.key].startsWith('data:')"
-                                    class="badge-reset-btn" @click="resetBadge(bf.key)"
-                                    title="Reset กลับ default">✕</button>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-            </div>
         </main>
     </div>
-
-    <Modal v-model:open="modal">
-        <template v-if="s.previewBgMode === 'image'">
-            <div class="bg-upload-area">
-                <img v-if="s.previewBgImage" :src="s.previewBgImage" class="bg-upload-preview" alt="preview bg" />
-                <div v-else class="bg-upload-placeholder">
-                    <span>ยังไม่มีรูป</span>
-                </div>
-                <div class="bg-upload-actions">
-                    <label class="badge-upload-btn" style="width:auto; padding: 7px 14px;">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" y1="3" x2="12" y2="15" />
-                        </svg>
-                        Upload Image
-                        <input type="file" accept="image/*" class="badge-file-input" @change="handlePreviewBgUpload" />
-                    </label>
-                    <button v-if="s.previewBgImage" class="btn btn-ghost" style="padding:7px 12px; font-size:12px;"
-                        @click="clearPreviewBgImage">✕ ลบรูป</button>
-                </div>
-            </div>
-        </template>
-    </Modal>
 </template>
 
 <style scoped>
+/* #region: BASE */
 .settings-root {
     --bg: #09090f;
     --surface: #111118;
@@ -653,15 +675,14 @@ const previewMsgs = computed(() => [
 .main-layout {
     position: relative;
     z-index: 1;
+    max-height: calc(100dvh - 80px);
     margin: 0 auto;
     padding: 32px 24px 60px;
-    display: flex;
-
-    /* grid-template-columns: 440px 1fr; */
+    display: grid;
+    grid-template-columns: 440px 1fr;
     gap: 32px;
-    /* align-items: start; */
+    align-items: start;
     overflow: hidden;
-    background-color: rgba(73, 98, 126, 0.342);
 }
 
 @media (max-width: 860px) {
@@ -671,7 +692,7 @@ const previewMsgs = computed(() => [
 }
 
 .settings-col {
-    max-height: calc(100vh - 120px);
+    max-height: calc(100vh - 80px);
     padding: 0 0 40px 0;
     flex-direction: column;
     display: flex;
@@ -823,10 +844,9 @@ const previewMsgs = computed(() => [
     font-weight: 700;
     font-size: 13px;
 }
+/* #endregion */
 
-/* ════════════════════════════════════════════
-   BADGE GRID
-════════════════════════════════════════════ */
+/* #region: BADGE GRID */
 .badge-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -867,8 +887,9 @@ const previewMsgs = computed(() => [
     /* badge เล็กต้องชัด */
     border-radius: 4px;
 }
+/* #endregion */
 
-/* tag บอก source ของรูป */
+/* #region: tag บอก source ของรูป */
 .badge-source-tag {
     position: absolute;
     bottom: -4px;
@@ -909,8 +930,9 @@ const previewMsgs = computed(() => [
     font-size: 10px;
     color: var(--text-muted);
 }
+/* #endregion */
 
-/* Upload button — label ครอบ input[file] ซ่อนอยู่ */
+/*  #region: Upload button — label ครอบ input[file] ซ่อนอยู่ */
 .badge-upload-btn {
     display: inline-flex;
     align-items: center;
@@ -942,8 +964,9 @@ const previewMsgs = computed(() => [
     opacity: 0;
     pointer-events: none;
 }
+/* #endregion */
 
-/* Reset badge button */
+/* #region: Reset badge button */
 .badge-reset-btn {
     position: absolute;
     top: 4px;
@@ -966,10 +989,9 @@ const previewMsgs = computed(() => [
 .badge-reset-btn:hover {
     background: rgba(248, 113, 113, 0.4);
 }
+/* #endregion */
 
-/* ════════════════════════════════════════════
-   OBS URL CARD
-════════════════════════════════════════════ */
+/* #region: OBS URL CARD */
 .obs-url-card {
     background: var(--surface);
     border: 1px solid v-bind(accentCssVar);
@@ -1023,23 +1045,22 @@ const previewMsgs = computed(() => [
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 4px 12px;
+    padding: 10px 12px;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
-    max-width: 380px;
-    overflow-x: auto;
 }
 
 .obs-url-text {
     font-family: monospace;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-muted);
     white-space: nowrap;
     display: block;
     line-height: 1.5;
 }
+/* #endregion */
 
-/* Actions */
+/* #region: ACTIONS */
 .actions-row {
     display: flex;
     gap: 10px;
@@ -1113,25 +1134,25 @@ const previewMsgs = computed(() => [
 .btn-obs:active {
     transform: scale(0.97);
 }
+/* #endregion */
 
-/* PREVIEW */
+/* #region: PREVIEW */
 .preview-col {
+    /* position: sticky; */
     display: flex;
     flex-direction: column;
     gap: 12px;
-    min-width: calc(100dvw - 650px);
 }
 
 .preview-header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    align-items: baseline;
     gap: 10px;
 }
 
 .preview-label {
     font-family: var(--font-ui);
-    font-size: 18px;
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -1212,4 +1233,72 @@ const previewMsgs = computed(() => [
     font-family: var(--font-body-ui);
     transition: background 0.15s, border-color 0.15s, color 0.15s, font-size 0.2s;
 }
+/* #endregion */
+
+/* #region: PREVIEW BACKGROUND CONTROLS */
+.bg-mode-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.bg-mode-tab {
+    flex: 1;
+    min-width: 72px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: var(--font-body-ui);
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    white-space: nowrap;
+}
+
+.bg-mode-tab:hover {
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+.bg-mode-tab.active {
+    border-color: v-bind(accentCssVar);
+    color: v-bind(accentCssVar);
+    background: color-mix(in srgb, v-bind(accentCssVar) 10%, transparent);
+}
+
+.bg-upload-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.bg-upload-preview {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.bg-upload-placeholder {
+    width: 100%;
+    height: 80px;
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-subtle);
+    font-size: 12px;
+}
+
+.bg-upload-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+/* #endregion */
 </style>

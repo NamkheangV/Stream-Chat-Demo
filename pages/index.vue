@@ -1,396 +1,272 @@
 <script setup lang="ts">
-import tmi from 'tmi.js'
+/**
+ * pages/loading.vue  (หรือตั้งเป็น default route ถ้าต้องการ)
+ *
+ * Splash screen — แสดง loading animation แล้ว redirect ไป /settings
+ * ใช้เป็น entry point แทน index.vue เมื่อเปิด URL หลัก
+ *
+ * วิธีใช้: ใส่ใน pages/loading.vue แล้วเพิ่ม redirect ใน nuxt.config
+ * หรือเพิ่ม <script> redirect ใน pages/index.vue
+ */
 
-/* ════════════════════════════════════════════
-   SETTINGS — โหลดจาก URL query params
-   badge images รวมอยู่ใน settings.badgeImages แล้ว
-════════════════════════════════════════════ */
-const { settings, loadFromUrl } = useOverlaySettings()
-onMounted(() => {
-    loadFromUrl()
+const router = useRouter()
+const progress = ref(0)
+const phase = ref<'boot' | 'load' | 'done'>('boot')
+
+const phaseText = computed(() => {
+    if (phase.value === 'boot') return 'กำลังเริ่มต้นระบบ...'
+    if (phase.value === 'load') return 'โหลด settings...'
+    return 'พร้อมแล้ว! กำลังเข้าสู่ settings...'
 })
 
-/* URL PARAM — ?ch=xxx override channel */
-const route = useRoute()
-const channelParam = computed(() =>
-    (route.query.ch as string) || (route.query.channel as string) || settings.value.channel || 'ReienOkami'
-)
+onMounted(async () => {
+    // phase 1: boot 0→55%
+    phase.value = 'boot'
+    await animateTo(55, 600)
 
-/* CHAT STATE */
-const chats = ref<{
-    id: number
-    user: string
-    html: string
-    badges: string[]
-    nameColor: string
-}[]>([])
+    // phase 2: load settings 55→90%
+    phase.value = 'load'
+    await animateTo(90, 500)
 
-/* CONNECTION STATUS */
-const status = ref<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting')
-const statusText = computed(() => ({
-    connecting: `กำลังเชื่อมต่อ #${channelParam.value}…`,
-    connected: '',
-    disconnected: 'หลุดการเชื่อมต่อ — กำลัง reconnect…',
-    error: 'เชื่อมต่อไม่ได้ กรุณาตรวจสอบ channel name',
-}[status.value]))
+    // phase 3: done 90→100%
+    phase.value = 'done'
+    await animateTo(100, 350)
 
-/* ════════════════════════════════════════════
-   HELPERS
-════════════════════════════════════════════ */
-function escapeHtml(str: string): string {
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-}
-
-// แปลง emote positions → <img> — sort จากท้ายก่อนเพื่อไม่ให้ index เลื่อน
-function parseEmotes(message: string, emotes?: Record<string, string[]>): string {
-    if (!emotes) return escapeHtml(message)
-
-    const positions: { id: string; start: number; end: number }[] = []
-    for (const [id, ranges] of Object.entries(emotes)) {
-        for (const range of ranges) {
-            const [start, end] = range.split('-').map(Number)
-            positions.push({ id, start, end })
-        }
-    }
-    positions.sort((a, b) => b.start - a.start)
-
-    let result = message
-    for (const { id, start, end } of positions) {
-        const name = message.slice(start, end + 1)
-        const img = `<img class="emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0" alt="${escapeHtml(name)}" title="${escapeHtml(name)}">`
-        result = result.slice(0, start) + img + result.slice(end + 1)
-    }
-    return result
-}
-
-/* ════════════════════════════════════════════
-   BADGE PARSER
-   ใช้รูปจาก settings.badgeImages
-   รองรับ: local path, base64 data URL, CDN URL
-
-   Twitch subscriber badge value format:
-   - value = tier * 1000 + months
-   - เช่น Tier1 3เดือน = "3", Tier2 6เดือน = "2006", Tier3 1ปี = "3012"
-   - months = Number(value) % 1000   (tier1 value < 1000 ดังนั้น months = value ตรงๆ)
-
-   เลือกรูป badge ตามระยะเวลา (months):
-   - 0        → subscriber (default / tier fallback)
-   - 1        → sub_1month
-   - 2        → sub_2month
-   - 3        → sub_3month
-   - 6        → sub_6month
-   - 9        → sub_9month
-   - 12+      → sub_1year
-════════════════════════════════════════════ */
-function getSubscriberBadgeSrc(value: string): string {
-    const bi = settings.value.badgeImages
-    const months = Number(value) % 1000   // แยก months ออกจาก tier prefix
-
-    if (months >= 12) return bi.sub_1year || bi.subscriber
-    if (months >= 9)  return bi.sub_9month || bi.subscriber
-    if (months >= 6)  return bi.sub_6month || bi.subscriber
-    if (months >= 3)  return bi.sub_3month || bi.subscriber
-    if (months >= 2)  return bi.sub_2month || bi.subscriber
-    if (months >= 1)  return bi.sub_1month || bi.subscriber
-    return bi.subscriber   // 0 months = เพิ่งซับ / fallback
-}
-
-function parseBadges(badges?: Record<string, string>): { icons: string[]; nameColor: string } {
-    if (!badges) return { icons: [], nameColor: 'var(--color-default)' }
-
-    const bi = settings.value.badgeImages
-
-    let nameColor = 'var(--color-default)'
-    if (badges.broadcaster) nameColor = 'var(--color-broadcaster)'
-    else if (badges.moderator) nameColor = 'var(--color-moderator)'
-    else if (badges.vip) nameColor = 'var(--color-vip)'
-    else if (badges.subscriber) nameColor = 'var(--color-subscriber)'
-
-    const icons: string[] = []
-
-    for (const [key, value] of Object.entries(badges)) {
-        let src = ''
-
-        if (key === 'subscriber') {
-            // เลือกรูปตามระยะเวลาการซับ
-            src = getSubscriberBadgeSrc(value)
-        } else {
-            src = (bi as any)[key] || ''
-        }
-
-        if (src) {
-            icons.push(`<img class="badge-img" src="${src}" alt="${key}" title="${key} ${value}">`)
-        }
-    }
-
-    return { icons, nameColor }
-}
-
-/* ════════════════════════════════════════════
-   TMI.JS — AUTO-RECONNECT
-════════════════════════════════════════════ */
-let client: tmi.Client | null = null
-let reconnectTimer: ReturnType<typeof setTimeout>
-
-function connect(channel: string) {
-    if (client) {
-        client.removeAllListeners()
-        client.disconnect().catch(() => { })
-        client = null
-    }
-    clearTimeout(reconnectTimer)
-    status.value = 'connecting'
-
-    client = new tmi.Client({ channels: [channel] })
-
-    client.on('connected', () => { status.value = 'connected' })
-
-    client.on('disconnected', (reason: string) => {
-        console.warn('[TwitchChat] Disconnected:', reason)
-        status.value = 'disconnected'
-        reconnectTimer = setTimeout(() => connect(channel), 5000)
-    })
-
-    client.on('message', (_ch, tags, message) => {
-        const { icons, nameColor } = parseBadges(tags.badges as Record<string, string>)
-        chats.value.push({
-            id: Date.now(),
-            user: tags['display-name'] || tags.username || 'Unknown',
-            html: parseEmotes(message, tags.emotes as any),
-            badges: icons,
-            nameColor,
-        })
-        const max = settings.value.maxMessages || 8
-        if (chats.value.length > max) chats.value.shift()
-    })
-
-    client.connect().catch((err: unknown) => {
-        console.error('[TwitchChat] Error:', err)
-        status.value = 'error'
-        reconnectTimer = setTimeout(() => connect(channel), 10000)
-    })
-}
-
-onMounted(() => connect(channelParam.value))
-watch(channelParam, (newCh) => connect(newCh))
-onUnmounted(() => {
-    clearTimeout(reconnectTimer)
-    client?.removeAllListeners()
-    client?.disconnect().catch(() => { })
+    // รอให้ animation เสร็จแล้ว redirect
+    await sleep(400)
+    router.push('/settings')
 })
+
+function animateTo(target: number, duration: number): Promise<void> {
+    return new Promise(resolve => {
+        const start = progress.value
+        const startTime = performance.now()
+        function tick(now: number) {
+            const t = Math.min((now - startTime) / duration, 1)
+            // easeOutCubic
+            progress.value = start + (target - start) * (1 - Math.pow(1 - t, 3))
+            if (t < 1) requestAnimationFrame(tick)
+            else { progress.value = target; resolve() }
+        }
+        requestAnimationFrame(tick)
+    })
+}
+
+function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)) }
 </script>
 
 <template>
-    <div class="overlay-root">
+    <div class="splash">
+        <div class="bg-noise" aria-hidden="true" />
 
-        <!-- Connection status -->
-        <Transition name="status">
-            <div v-if="status !== 'connected'" class="status-badge" :class="status">
-                <span class="status-dot" />
-                {{ statusText }}
-            </div>
-        </Transition>
+        <!-- orbs -->
+        <div class="orb orb-1" aria-hidden="true" />
+        <div class="orb orb-2" aria-hidden="true" />
+        <div class="orb orb-3" aria-hidden="true" />
 
-        <!-- Chat messages -->
-        <TransitionGroup name="msg" tag="div" class="chat-list">
-            <div v-for="msg in chats" :key="msg.id" class="chat-item">
-
-                <div class="chat-header">
-                    <span v-for="(badge, i) in msg.badges" :key="i" class="badge-slot" v-html="badge" />
-                    <span class="username" :style="{ color: msg.nameColor }">
-                        {{ msg.user }}
-                    </span>
+        <div class="content">
+            <!-- Logo -->
+            <div class="logo-wrap">
+                <span class="logo-icon">🐺</span>
+                <div class="logo-text-wrap">
+                    <span class="logo-main">レイヱン Chat<em>Widget</em></span>
+                    <span class="logo-sub">OBS Stream Overlay</span>
                 </div>
-
-                <div class="chat-bubble" v-html="msg.html" />
-
             </div>
-        </TransitionGroup>
 
+            <!-- Progress bar -->
+            <div class="progress-track">
+                <div class="progress-fill" :style="{ width: progress + '%' }" />
+                <div class="progress-glow" :style="{ left: progress + '%' }" />
+            </div>
+
+            <!-- Status text -->
+            <Transition name="fade-up" mode="out-in">
+                <p :key="phase" class="status-text">{{ phaseText }}</p>
+            </Transition>
+
+            <span class="progress-pct">{{ Math.round(progress) }}%</span>
+        </div>
     </div>
 </template>
 
 <style scoped>
-.overlay-root {
-    width: var(--chat-width);
-    min-height: 100vh;
-    background: transparent;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    position: relative;
-}
-
-.status-badge {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    right: 10px;
+.splash {
+    min-height: 100dvh;
+    background: #09090f;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 10px;
-    font-size: 12px;
-    font-family: var(--font-body);
-    font-weight: 500;
-    backdrop-filter: blur(12px);
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Noto Sans Thai Looped', sans-serif;
 }
 
-.status-badge.connecting {
-    background: rgba(30, 30, 50, 0.85);
-    color: #94a3b8;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+/* ── noise texture ── */
+.bg-noise {
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+    pointer-events: none;
+    z-index: 0;
 }
 
-.status-badge.disconnected {
-    background: rgba(40, 20, 10, 0.9);
-    color: #fb923c;
-    border: 1px solid rgba(251, 146, 60, 0.25);
-}
-
-.status-badge.error {
-    background: rgba(40, 10, 10, 0.9);
-    color: #f87171;
-    border: 1px solid rgba(248, 113, 113, 0.25);
-}
-
-.status-dot {
-    width: 7px;
-    height: 7px;
+/* ── glow orbs ── */
+.orb {
+    position: absolute;
     border-radius: 50%;
-    flex-shrink: 0;
-    animation: pulse 1.5s ease-in-out infinite;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+    animation: drift 8s ease-in-out infinite alternate;
+}
+.orb-1 {
+    width: 500px; height: 500px;
+    top: -150px; left: -100px;
+    background: radial-gradient(circle, rgba(126, 207, 220, 0.12) 0%, transparent 70%);
+    animation-duration: 9s;
+}
+.orb-2 {
+    width: 400px; height: 400px;
+    bottom: -100px; right: -80px;
+    background: radial-gradient(circle, rgba(160, 100, 240, 0.10) 0%, transparent 70%);
+    animation-duration: 11s;
+    animation-delay: -3s;
+}
+.orb-3 {
+    width: 300px; height: 300px;
+    top: 40%; left: 55%;
+    background: radial-gradient(circle, rgba(64, 196, 255, 0.07) 0%, transparent 70%);
+    animation-duration: 7s;
+    animation-delay: -5s;
 }
 
-.connecting .status-dot {
-    background: #94a3b8;
+@keyframes drift {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(30px, 20px) scale(1.05); }
 }
 
-.disconnected .status-dot {
-    background: #fb923c;
-}
-
-.error .status-dot {
-    background: #f87171;
-    animation: none;
-}
-
-@keyframes pulse {
-
-    0%,
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-
-    50% {
-        opacity: 0.4;
-        transform: scale(0.8);
-    }
-}
-
-.status-enter-active,
-.status-leave-active {
-    transition: opacity 0.3s, transform 0.3s;
-}
-
-.status-enter-from,
-.status-leave-to {
-    opacity: 0;
-    transform: translateY(-6px);
-}
-
-.chat-list {
+/* ── main content ── */
+.content {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
-    gap: var(--msg-gap);
-    position: relative;
+    align-items: center;
+    gap: 28px;
+    width: 340px;
+    max-width: 90vw;
 }
 
-.chat-item {
+/* ── logo ── */
+.logo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    animation: fadeIn 0.6s ease both;
+}
+
+.logo-icon {
+    font-size: 48px;
+    line-height: 1;
+    filter: drop-shadow(0 0 18px rgba(126, 207, 220, 0.4));
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-6px); }
+}
+
+.logo-text-wrap {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.chat-header {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 5px;
-    padding: 0 4px;
-}
-
-:deep(.badge-img) {
-    width: var(--badge-size, 16px);
-    height: var(--badge-size, 16px);
-    object-fit: contain;
-    vertical-align: middle;
-    flex-shrink: 0;
-}
-
-.username {
-    font-family: var(--font-display);
-    font-size: var(--font-size-user);
-    font-weight: 700;
-    letter-spacing: 0.01em;
+.logo-main {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: #e8eaf0;
+    letter-spacing: -0.02em;
     line-height: 1;
 }
 
-.chat-bubble {
-    background: var(--bubble-bg);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-left: 3px solid var(--accent-color);
-    border-radius: 16px;
-    padding: 10px 14px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    font-size: var(--font-size-msg);
-    color: var(--text-color);
-    line-height: 1.6;
-    font-family: var(--font-body);
-    overflow-wrap: anywhere;
-    word-break: break-word;
-    white-space: pre-wrap;
+.logo-main em {
+    font-style: normal;
+    color: #7ecfdc;
 }
 
-:deep(.emote) {
-    width: var(--emote-size, 26px);
-    height: var(--emote-size, 26px);
-    object-fit: contain;
-    vertical-align: middle;
-    display: inline-block;
-    margin: 0 2px;
+.logo-sub {
+    font-size: 11px;
+    font-weight: 500;
+    color: #4b5563;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 
-.msg-enter-active {
-    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.msg-leave-active {
-    transition: opacity 0.25s ease, transform 0.25s ease;
-    position: absolute;
+/* ── progress bar ── */
+.progress-track {
     width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 99px;
+    position: relative;
+    overflow: visible;
+    animation: fadeIn 0.4s 0.2s ease both;
 }
 
-.msg-enter-from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.97);
+.progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #7ecfdc, #40c4ff);
+    transition: width 0.08s linear;
+    position: relative;
 }
 
-.msg-leave-to {
-    opacity: 0;
-    transform: translateX(-12px) scale(0.96);
+.progress-glow {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #7ecfdc;
+    filter: blur(10px);
+    opacity: 0.6;
+    pointer-events: none;
+    transition: left 0.08s linear;
 }
 
-.msg-move {
-    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+/* ── status text ── */
+.status-text {
+    font-size: 13px;
+    color: #6b7280;
+    letter-spacing: 0.01em;
+    text-align: center;
+    min-height: 20px;
 }
+
+.progress-pct {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: #7ecfdc;
+    letter-spacing: 0.08em;
+}
+
+/* ── transitions ── */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-up-enter-active,
+.fade-up-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fade-up-enter-from { opacity: 0; transform: translateY(6px); }
+.fade-up-leave-to   { opacity: 0; transform: translateY(-4px); }
 </style>
