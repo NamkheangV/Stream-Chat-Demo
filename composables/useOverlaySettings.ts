@@ -2,14 +2,16 @@
  * composables/useOverlaySettings.ts
  *
  * ── วิธี sync settings → OBS ──
- * Settings page encode ทุก setting รวมถึง badge images (Base64)
- * ลงใน URL → user copy ไปวางใน OBS
- * Overlay page decode URL params → apply CSS vars + badge map ทันที
+ * Settings page encode non-image settings ลงใน URL → user copy ไปวางใน OBS
+ * Overlay page decode URL params → apply CSS vars ทันที
+ * Badge images ไม่ผ่าน URL → เก็บใน localStorage แยก (ป้องกัน HTTP 431)
  *
  * ── Badge image strategy ──
  * 1. Default badges → ใช้รูปจาก /public/badges/ (asset ใน project)
+ *    path จะถูก prefix ด้วย useNuxtApp().$config.app.baseURL อัตโนมัติ
+ *    เพื่อรองรับ GitHub Pages ที่ deploy อยู่ใน sub-path เช่น /stream-chat-demo/
  * 2. Custom badges  → อัปโหลดจากหน้า /settings → แปลงเป็น Base64
- *    → encode ลง URL param เหมือน settings อื่น (ไม่ต้อง backend)
+ *    → บันทึกลง localStorage (BADGE_KEY) ไม่ผ่าน URL
  */
 
 export interface BadgeImages {
@@ -74,33 +76,54 @@ export interface OverlaySettings {
     previewBgImage: string   // base64 data URL (เก็บแยกใน PREVIEW_BG_KEY)
 
     // ── Badge images (URL หรือ base64) ──────
-    // เก็บแยกใน localStorage (BADGE_KEY) ไม่ผ่าน URL
+    // เก็บเป็น JSON string ใน URL param "bi"
     badgeImages: BadgeImages
 }
 
 // ── Default badge paths (รูปใน /public/badges/) ─────────────
-// วาง badge PNG ไว้ที่ public/badges/xxx.png แล้ว Nuxt จะ serve ให้
-export const DEFAULT_BADGE_IMAGES: BadgeImages = {
-    broadcaster: '/badges/broadcaster.svg',
-    moderator: '/badges/moderator.svg',
-    vip: '/badges/vip.svg',
-    subscriber: '/badges/sub1.svg',
-    sub2: '/badges/sub2.svg',
-    sub3: '/badges/sub3.svg',
+// ใช้ฟังก์ชันแทน const เพื่อ prefix baseURL ตอน runtime
+// รองรับ GitHub Pages ที่ deploy ใน sub-path เช่น /stream-chat-demo/badges/xxx.svg
+const BADGE_FILENAMES = {
+    broadcaster: 'broadcaster.svg',
+    moderator: 'moderator.svg',
+    vip: 'vip.svg',
+    subscriber: 'sub1.svg',
+    sub2: 'sub2.svg',
+    sub3: 'sub3.svg',
+    sub_1month: 'sub_1month.svg',
+    sub_2month: 'sub_2month.svg',
+    sub_3month: 'sub_3month.svg',
+    sub_6month: 'sub_6month.svg',
+    sub_9month: 'sub_9month.svg',
+    sub_1year: 'sub_1year.svg',
+} as const satisfies Record<keyof BadgeImages, string>
 
-    sub_1month: '/badges/sub_1month.svg',
-    sub_2month: '/badges/sub_2month.svg',
-    sub_3month: '/badges/sub_3month.svg',
-    sub_6month: '/badges/sub_6month.svg',
-    sub_9month: '/badges/sub_9month.svg',
-    sub_1year: '/badges/sub_1year.svg',
-
-    // turbo: '/badges/turbo.svg',
-    // partner: '/badges/partner.svg',
-    // prime: '/badges/prime.svg',
-    // staff: '/badges/staff.svg',
-    // 'sub-gifter': '/badges/subgifter.svg',
+/** คืนค่า BadgeImages พร้อม baseURL prefix — เรียกใน client-side เท่านั้น */
+export function getDefaultBadgeImages(): BadgeImages {
+    // useNuxtApp ใช้ได้เฉพาะใน Nuxt context (client)
+    // ถ้าเรียกนอก context (เช่น unit test) ให้ใช้ '' แทน
+    let base = ''
+    try {
+        base = useNuxtApp().$config.app.baseURL ?? ''
+        // ตัด trailing slash ออก เพื่อ join กับ /badges/xxx ได้สะอาด
+        base = base.replace(/\/$/, '')
+    } catch { /* นอก Nuxt context */ }
+    const result = {} as BadgeImages
+    for (const [key, filename] of Object.entries(BADGE_FILENAMES) as [keyof BadgeImages, string][]) {
+        result[key] = `${base}/badges/${filename}`
+    }
+    return result
 }
+
+// ── static fallback สำหรับใช้นอก Nuxt context (เช่น DEFAULT_SETTINGS) ──
+// ตอน runtime จริง getDefaultBadgeImages() จะถูกเรียกแทนเสมอ
+export const DEFAULT_BADGE_IMAGES: BadgeImages = (() => {
+    const result = {} as BadgeImages
+    for (const [key, filename] of Object.entries(BADGE_FILENAMES) as [keyof BadgeImages, string][]) {
+        result[key] = `/badges/${filename}`
+    }
+    return result
+})()
 
 // fallback เมื่อรูป local ไม่มี → ใช้ Twitch CDN
 export const TWITCH_CDN_BADGES: BadgeImages = {
@@ -254,24 +277,28 @@ function readStorage(): Omit<OverlaySettings, 'badgeImages'> | null {
     } catch { return null }
 }
 
-/** อ่าน badge images จาก localStorage แยก key */
+/** อ่าน badge images จาก localStorage แยก key
+ *  merge กับ getDefaultBadgeImages() เพื่อให้ได้ path ที่มี baseURL ถูกต้อง */
 function readBadgeStorage(): BadgeImages {
-    if (typeof localStorage === 'undefined') return { ...DEFAULT_BADGE_IMAGES }
+    const defaults = getDefaultBadgeImages()
+    if (typeof localStorage === 'undefined') return defaults
     try {
         const raw = localStorage.getItem(BADGE_KEY)
-        if (!raw) return { ...DEFAULT_BADGE_IMAGES }
+        if (!raw) return defaults
         const parsed = JSON.parse(raw) as Partial<BadgeImages>
-        return { ...DEFAULT_BADGE_IMAGES, ...parsed }
-    } catch { return { ...DEFAULT_BADGE_IMAGES } }
+        return { ...defaults, ...parsed }
+    } catch { return defaults }
 }
 
-/** บันทึก badge images ลง localStorage แยก key */
+/** บันทึก badge images ลง localStorage แยก key
+ *  บันทึกเฉพาะ custom badges (base64) — ข้าม default path เพื่อประหยัด space
+ *  เปรียบเทียบกับ filename แทน full path เพื่อไม่ให้ baseURL ต่างกันทำให้ custom หาย */
 function writeBadgeStorage(bi: BadgeImages) {
     if (typeof localStorage === 'undefined') return
-    // บันทึกเฉพาะ custom badges (ที่ต่างจาก default) เพื่อประหยัด space
     const custom: Partial<BadgeImages> = {}
     for (const [k, v] of Object.entries(bi) as [keyof BadgeImages, string][]) {
-        if (v !== DEFAULT_BADGE_IMAGES[k]) custom[k] = v
+        // เก็บเฉพาะ base64 data URL (custom upload) เท่านั้น
+        if (v.startsWith('data:')) custom[k] = v
     }
     if (Object.keys(custom).length > 0) {
         localStorage.setItem(BADGE_KEY, JSON.stringify(custom))
@@ -300,13 +327,13 @@ function writePreviewBgImage(img: string) {
 export function useOverlaySettings() {
     const settings = useState<OverlaySettings>('overlay-settings', () => ({
         ...DEFAULT_SETTINGS,
-        badgeImages: { ...DEFAULT_BADGE_IMAGES },
+        badgeImages: getDefaultBadgeImages(),
     }))
 
     /** load() — หน้า /settings: โหลดจาก localStorage (settings + badge แยก key) */
     function load() {
         const stored = readStorage()
-        const badges = readBadgeStorage()
+        const badges = readBadgeStorage()   // merge default (พร้อม baseURL) + custom จาก localStorage
         settings.value = {
             ...(stored ?? DEFAULT_SETTINGS),
             badgeImages: badges,
@@ -314,14 +341,13 @@ export function useOverlaySettings() {
         applyCssVars(settings.value)
     }
 
-    /** save() — หน้า /settings: บันทึก settings + badge + previewBgImage แยก key */
+    /** save() — หน้า /settings: บันทึก settings + badge แยก key */
     function save() {
         if (typeof localStorage !== 'undefined') {
-            // บันทึก settings โดยไม่รวม badgeImages และ previewBgImage (เก็บแยก key)
-            const { badgeImages, previewBgImage, ...rest } = settings.value
+            // บันทึก settings โดยไม่รวม badgeImages
+            const { badgeImages, ...rest } = settings.value
             localStorage.setItem(STORAGE_KEY, JSON.stringify(rest))
             writeBadgeStorage(badgeImages)
-            writePreviewBgImage(previewBgImage)
         }
         applyCssVars(settings.value)
     }
@@ -349,7 +375,7 @@ export function useOverlaySettings() {
     }
 
     function reset() {
-        settings.value = { ...DEFAULT_SETTINGS, badgeImages: { ...DEFAULT_BADGE_IMAGES } }
+        settings.value = { ...DEFAULT_SETTINGS, badgeImages: getDefaultBadgeImages() }
         if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(BADGE_KEY)
         }

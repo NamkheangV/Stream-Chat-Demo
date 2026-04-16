@@ -30,5 +30,5 @@ export { requestIdleCallback, cancelIdleCallback } from '#app/compat/idle-callba
 export { setInterval } from '#app/compat/interval';
 export { definePageMeta } from '../node_modules/nuxt/dist/pages/runtime/composables';
 export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
-export { DEFAULT_BADGE_IMAGES, TWITCH_CDN_BADGES, DEFAULT_SETTINGS, applyCssVars, encodeSettingsToUrl, decodeSettingsFromUrl, useOverlaySettings, BadgeImages, PreviewBgMode, OverlaySettings } from '../composables/useOverlaySettings';
+export { getDefaultBadgeImages, DEFAULT_BADGE_IMAGES, TWITCH_CDN_BADGES, DEFAULT_SETTINGS, applyCssVars, encodeSettingsToUrl, decodeSettingsFromUrl, useOverlaySettings, BadgeImages, PreviewBgMode, OverlaySettings } from '../composables/useOverlaySettings';
 export { hexToRgbStr, hexToRgb } from '../utils/color';
