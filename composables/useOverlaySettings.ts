@@ -140,7 +140,7 @@ export const DEFAULT_SETTINGS: OverlaySettings = {
     colorVip: '#E040FB',
     colorSubscriber: '#40C4FF',
     colorDefault: '#FFFFFF',
-    previewBgMode: 'gradient',
+    previewBgMode: 'solid',
     previewBgColor: '#1a1a2e',
     previewBgColor2: '#16213e',
     previewBgAngle: 135,

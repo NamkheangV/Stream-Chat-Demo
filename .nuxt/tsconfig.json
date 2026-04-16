@@ -26,7 +26,7 @@
         "../node_modules/@nuxt/schema"
       ],
       "nuxt": [
-        "../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1._08f3e3c8442f346546befbf42fb691ad/node_modules/nuxt"
+        "../node_modules/nuxt"
       ],
       "vite/client": [
         "../node_modules/vite/client"
@@ -104,25 +104,25 @@
         "../server/*"
       ],
       "#app": [
-        "../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1._08f3e3c8442f346546befbf42fb691ad/node_modules/nuxt/dist/app"
+        "../node_modules/nuxt/dist/app"
       ],
       "#app/*": [
-        "../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1._08f3e3c8442f346546befbf42fb691ad/node_modules/nuxt/dist/app/*"
+        "../node_modules/nuxt/dist/app/*"
       ],
       "vue-demi": [
-        "../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1._08f3e3c8442f346546befbf42fb691ad/node_modules/nuxt/dist/app/compat/vue-demi"
+        "../node_modules/nuxt/dist/app/compat/vue-demi"
       ],
       "#vue-router": [
         "../node_modules/vue-router"
       ],
       "#unhead/composables": [
-        "../node_modules/.pnpm/nuxt@3.21.2_@emnapi+core@1._08f3e3c8442f346546befbf42fb691ad/node_modules/nuxt/dist/head/runtime/composables/v3"
+        "../node_modules/nuxt/dist/head/runtime/composables/v3"
       ],
       "#imports": [
         "./imports"
       ],
       "#app-manifest": [
-        "./manifest/meta/dev"
+        "./manifest/meta/dev.json"
       ],
       "#components": [
         "./components"
@@ -167,8 +167,6 @@
     "../**/*",
     "../.config/nuxt.*",
     "./nuxt.d.ts",
-    "../node_modules/.pnpm/@nuxtjs+tailwindcss@6.14.0_magicast@0.5.2_yaml@2.8.3/node_modules/runtime",
-    "../node_modules/.pnpm/@nuxtjs+tailwindcss@6.14.0_magicast@0.5.2_yaml@2.8.3/node_modules/dist/runtime",
     "../node_modules/runtime",
     "../node_modules/dist/runtime",
     ".."
@@ -176,8 +174,6 @@
   "exclude": [
     "../dist",
     "../.data",
-    "../node_modules/.pnpm/@nuxtjs+tailwindcss@6.14.0_magicast@0.5.2_yaml@2.8.3/node_modules/runtime/server",
-    "../node_modules/.pnpm/@nuxtjs+tailwindcss@6.14.0_magicast@0.5.2_yaml@2.8.3/node_modules/dist/runtime/server",
     "../node_modules/runtime/server",
     "../node_modules/dist/runtime/server",
     "dev"

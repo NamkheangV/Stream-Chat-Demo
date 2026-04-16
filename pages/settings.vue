@@ -58,7 +58,7 @@ function debouncedSave() {
 ════════════════════════════════════════════ */
 const previewBgStyle = computed(() => {
     const m = s.value.previewBgMode
-    if (m === 'none') return { background: 'transparent' }
+    // if (m === 'none') return { background: 'transparent' }
     if (m === 'solid') return { background: s.value.previewBgColor }
     if (m === 'image' && s.value.previewBgImage)
         return { backgroundImage: `url(${s.value.previewBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -196,45 +196,90 @@ function resetBadge(key: string) {
     save()
 }
 
-// Preview messages
-const previewMsgs = computed(() => [
+// Preview feed — mix of chat and alerts
+type PreviewKind = 'chat' | 'follow' | 'raid' | 'sub' | 'resub' | 'subgift' | 'bits'
+const previewFeed = computed((): Array<{ id: number; kind: PreviewKind; [k: string]: any }> => [
     {
-        id: 1, user: s.value.channel || 'Broadcaster',
+        id: 1, kind: 'chat',
+        user: s.value.channel || 'Broadcaster',
         color: s.value.colorBroadcaster,
         badgeSrc: s.value.badgeImages.broadcaster,
-        text: 'สวัสดีทุกคนนน!  หมาป่าสุดหล่อมาแล้ววว! 🐺✨',
+        text: 'สวัสดีทุกคนนน! หมาป่าสุดหล่อมาแล้ววว! 🐺✨',
     },
     {
-        id: 2, user: 'ModeratorBot',
+        id: 2, kind: 'follow',
+        user: 'NewFollower007',
+    },
+    {
+        id: 3, kind: 'chat',
+        user: 'ModeratorBot',
         color: s.value.colorModerator,
         badgeSrc: s.value.badgeImages.moderator,
         text: 'ห้ามสแปมนะครับ ไม่งั้นจะโดนปิ้ว ๆ 🔫',
     },
     {
-        id: 3, user: 'Subscriber123',
+        id: 4, kind: 'sub',
+        user: 'NewSubUser',
+        tier: '1000',
+        message: 'ดูนานมากแล้ว ตัดสินใจซับซะที! 🎉',
+    },
+    {
+        id: 5, kind: 'chat',
+        user: 'Subscriber123',
         color: s.value.colorSubscriber,
         badgeSrc: s.value.badgeImages.sub_1month,
         text: 'พี่เรย์วันนี้ก็หล่อเหมือนเคยเลยครับ! 😍',
     },
     {
-        id: 4, user: 'Subscriber888',
-        color: s.value.colorSubscriber,
-        badgeSrc: s.value.badgeImages.sub_6month,
-        text: 'สวัสดีครับพี่เรย์! นี่ผมเป็น subscriber เดือนที่ 6 แล้วนะ! 🎉 อยากให้พี่เรย์แนะนำเพลงใหม่ ๆ หน่อยครับ',
+        id: 6, kind: 'resub',
+        user: 'LoyalFan888',
+        months: 6,
+        tier: '1000',
+        message: 'ซับมาครึ่งปีแล้ว ❤️',
     },
     {
-        id: 5, user: 'SubscriberPro',
-        color: s.value.colorSubscriber,
-        badgeSrc: s.value.badgeImages.sub_1year,
-        text: 'ติดตามมาตั้งแต่ปีที่แล้วเลยครับ! รักพี่เรย์มาก ๆ ❤️',
+        id: 7, kind: 'subgift',
+        user: 'GenerousViewer',
+        recipient: 'LuckyViewer99',
+        tier: '1000',
     },
     {
-        id: 6, user: 'Viewer007',
+        id: 8, kind: 'raid',
+        user: 'RaiderChannel',
+        viewerCount: 42,
+    },
+    {
+        id: 9, kind: 'bits',
+        user: 'CheerLeader',
+        bits: 500,
+        message: 'สู้ ๆ นะครับพี่! 💪',
+    },
+    {
+        id: 10, kind: 'chat',
+        user: 'Viewer007',
         color: s.value.colorDefault,
         badgeSrc: '',
         text: 'สวัสดีครับ 🖖',
     },
 ])
+
+function tierLabelPreview(tier?: string) {
+    if (tier === '2000') return 'Tier 2'
+    if (tier === '3000') return 'Tier 3'
+    return 'Tier 1'
+}
+function monthsLabelPreview(months: number) {
+    if (months >= 12 && months % 12 === 0) return `${months / 12} ปี`
+    return `${months} เดือน`
+}
+function bitsEmojiPreview(bits: number) {
+    if (bits >= 10000) return '💎'
+    if (bits >= 5000)  return '🔴'
+    if (bits >= 1000)  return '🟣'
+    if (bits >= 100)   return '🔵'
+    if (bits >= 10)    return '🟢'
+    return '⬜'
+}
 </script>
 
 <template>
@@ -290,24 +335,97 @@ const previewMsgs = computed(() => [
                 <div class="preview-stage">
                     <div class="stream-bg" :style="previewBgStyle" />
                     <div class="preview-overlay" :style="{ width: s.chatWidth + 'px', gap: s.msgGap + 'px' }">
-                        <div v-for="msg in previewMsgs" :key="msg.id" class="preview-item">
-                            <div class="preview-header-row">
-                                <img v-if="msg.badgeSrc" :src="msg.badgeSrc" class="preview-badge" />
-                                <span class="preview-username"
-                                    :style="{ color: msg.color, fontSize: s.fontSizeUser + 'px' }">
-                                    {{ msg.user }}
-                                </span>
+                        <template v-for="item in previewFeed" :key="item.id">
+
+                            <!-- chat -->
+                            <div v-if="item.kind === 'chat'" class="preview-item">
+                                <div class="preview-header-row">
+                                    <img v-if="item.badgeSrc" :src="item.badgeSrc" class="preview-badge" />
+                                    <span class="preview-username" :style="{ color: item.color, fontSize: s.fontSizeUser + 'px' }">
+                                        {{ item.user }}
+                                    </span>
+                                </div>
+                                <div class="preview-bubble" :style="{
+                                    background: bubbleBgComputed,
+                                    borderLeftColor: accentComputed,
+                                    fontSize: s.fontSizeMsg + 'px',
+                                    color: s.textColor,
+                                }">{{ item.text }}</div>
                             </div>
 
-                            <div class="preview-bubble" :style="{
-                                background: bubbleBgComputed,
-                                borderLeftColor: accentComputed,
-                                fontSize: s.fontSizeMsg + 'px',
-                                color: s.textColor,
-                            }">
-                                {{ msg.text }}
+                            <!-- follow -->
+                            <div v-else-if="item.kind === 'follow'" class="pv-alert pv-follow">
+                                <span class="pv-icon">🌸</span>
+                                <div class="pv-body">
+                                    <span class="pv-user" :style="{ fontSize: s.fontSizeUser + 'px' }">{{ item.user }}</span>
+                                    <span class="pv-msg" :style="{ fontSize: (s.fontSizeMsg - 1) + 'px', color: s.textColor }">ติดตามช่องแล้ว!</span>
+                                </div>
+                                <span class="pv-badge">FOLLOW</span>
                             </div>
-                        </div>
+
+                            <!-- raid -->
+                            <div v-else-if="item.kind === 'raid'" class="pv-alert pv-raid">
+                                <span class="pv-icon">⚔️</span>
+                                <div class="pv-body">
+                                    <span class="pv-user" :style="{ fontSize: s.fontSizeUser + 'px' }">{{ item.user }}</span>
+                                    <span class="pv-msg" :style="{ fontSize: (s.fontSizeMsg - 1) + 'px', color: s.textColor }">
+                                        Raid มา {{ item.viewerCount?.toLocaleString() }} คน!
+                                    </span>
+                                </div>
+                                <span class="pv-badge">RAID</span>
+                            </div>
+
+                            <!-- sub -->
+                            <div v-else-if="item.kind === 'sub'" class="pv-alert pv-sub">
+                                <span class="pv-icon">⭐</span>
+                                <div class="pv-body">
+                                    <span class="pv-user" :style="{ fontSize: s.fontSizeUser + 'px' }">{{ item.user }}</span>
+                                    <span class="pv-msg" :style="{ fontSize: (s.fontSizeMsg - 1) + 'px', color: s.textColor }">
+                                        สมัครสมาชิกใหม่ {{ tierLabelPreview(item.tier) }}!
+                                    </span>
+                                    <span v-if="item.message" class="pv-submsg" :style="{ fontSize: (s.fontSizeMsg - 2) + 'px', color: s.textColor }">"{{ item.message }}"</span>
+                                </div>
+                                <span class="pv-badge pv-sub-badge">NEW SUB</span>
+                            </div>
+
+                            <!-- resub -->
+                            <div v-else-if="item.kind === 'resub'" class="pv-alert pv-sub">
+                                <span class="pv-icon">💫</span>
+                                <div class="pv-body">
+                                    <span class="pv-user" :style="{ fontSize: s.fontSizeUser + 'px' }">{{ item.user }}</span>
+                                    <span class="pv-msg" :style="{ fontSize: (s.fontSizeMsg - 1) + 'px', color: s.textColor }">
+                                        ต่ออายุ {{ tierLabelPreview(item.tier) }} ครบ {{ monthsLabelPreview(item.months ?? 0) }}!
+                                    </span>
+                                    <span v-if="item.message" class="pv-submsg" :style="{ fontSize: (s.fontSizeMsg - 2) + 'px', color: s.textColor }">"{{ item.message }}"</span>
+                                </div>
+                                <span class="pv-badge pv-sub-badge">RESUB</span>
+                            </div>
+
+                            <!-- subgift -->
+                            <div v-else-if="item.kind === 'subgift'" class="pv-alert pv-gift">
+                                <span class="pv-icon">🎁</span>
+                                <div class="pv-body">
+                                    <span class="pv-user" :style="{ fontSize: s.fontSizeUser + 'px' }">{{ item.user }}</span>
+                                    <span class="pv-msg" :style="{ fontSize: (s.fontSizeMsg - 1) + 'px', color: s.textColor }">
+                                        Gift Sub {{ tierLabelPreview(item.tier) }} แก่ {{ item.recipient }}!
+                                    </span>
+                                </div>
+                                <span class="pv-badge pv-gift-badge">GIFT</span>
+                            </div>
+
+                            <!-- bits -->
+                            <div v-else-if="item.kind === 'bits'" class="pv-alert pv-bits">
+                                <span class="pv-icon">{{ bitsEmojiPreview(item.bits ?? 0) }}</span>
+                                <div class="pv-body">
+                                    <span class="pv-user" :style="{ fontSize: s.fontSizeUser + 'px' }">{{ item.user }}</span>
+                                    <span class="pv-msg" :style="{ fontSize: (s.fontSizeMsg - 1) + 'px', color: s.textColor }">
+                                        Cheer {{ item.bits?.toLocaleString() }} Bits!
+                                    </span>
+                                    <span v-if="item.message" class="pv-submsg" :style="{ fontSize: (s.fontSizeMsg - 2) + 'px', color: s.textColor }">"{{ item.message }}"</span>
+                                </div>
+                                <span class="pv-badge pv-bits-badge">BITS</span>
+                            </div>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -430,10 +548,10 @@ const previewMsgs = computed(() => [
 
                     <!-- Mode tabs -->
                     <div class="bg-mode-tabs">
-                        <button v-for="m in (['gradient','solid','image','none'] as const)" :key="m"
+                        <button v-for="m in (['solid', 'gradient', 'image'] as const)" :key="m"
                             class="bg-mode-tab" :class="{ active: s.previewBgMode === m }"
                             @click="s.previewBgMode = m; debouncedSave()">
-                            {{ m === 'gradient' ? '🌈 Gradient' : m === 'solid' ? '⬛ Solid' : m === 'image' ? '🖼 Image' : '⬜ None' }}
+                              {{  m === 'solid' ? '🟦 Solid' : m === 'gradient' ? '🌈 Gradient' : m === 'image' ? '🍉 Image' : 'None' }}
                         </button>
                     </div>
 
@@ -950,6 +1068,7 @@ const previewMsgs = computed(() => [
 
 /* Upload button — label ครอบ input[file] ซ่อนอยู่ */
 .badge-upload-btn {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -1207,6 +1326,8 @@ const previewMsgs = computed(() => [
     flex-direction: column;
     max-width: calc(100% - 24px);
     overflow: hidden;
+    /* max-height: calc(100% - 80px);
+    overflow: auto; */
     transition: width 0.2s;
 }
 
@@ -1252,7 +1373,7 @@ const previewMsgs = computed(() => [
 }
 /* #endregion */
 
-/* #region: PREVIEW BACKGROUND CONTROLS */
+/* #region: Preview Background Controls */
 .bg-mode-tabs {
     display: flex;
     gap: 6px;
@@ -1317,5 +1438,61 @@ const previewMsgs = computed(() => [
     gap: 8px;
     align-items: center;
 }
+/* #endregion */
+
+/* #region: Preview Alert Cards */
+.pv-alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(14px);
+    position: relative;
+    overflow: hidden;
+}
+.pv-alert::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.05) 50%, transparent 60%);
+    background-size: 200% 100%;
+    animation: pv-shimmer 2.2s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes pv-shimmer {
+    0%   { background-position: 200% center; }
+    100% { background-position: -200% center; }
+}
+.pv-icon { font-size: 18px; flex-shrink: 0; line-height: 1; }
+.pv-body { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.pv-user { font-family: var(--font-ui); font-weight: 800; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-msg  { line-height: 1.3; font-family: var(--font-body-ui); }
+.pv-submsg { opacity: 0.6; font-family: var(--font-body-ui); line-height: 1.3; }
+.pv-badge {
+    font-size: 8px; font-weight: 800; letter-spacing: 0.1em;
+    padding: 2px 6px; border-radius: 5px; flex-shrink: 0; align-self: flex-start;
+}
+
+.pv-follow { background: rgba(244,63,94,0.14); border-color: rgba(244,63,94,0.3); border-left: 3px solid #f43f5e; }
+.pv-follow .pv-user { color: #fb7185; }
+.pv-follow .pv-badge { background: rgba(244,63,94,0.25); color: #fb7185; }
+
+.pv-raid { background: rgba(245,158,11,0.14); border-color: rgba(245,158,11,0.3); border-left: 3px solid #f59e0b; }
+.pv-raid .pv-user { color: #fbbf24; }
+.pv-raid .pv-badge { background: rgba(245,158,11,0.25); color: #fbbf24; }
+
+.pv-sub { background: rgba(126,207,220,0.12); border-color: rgba(126,207,220,0.28); border-left: 3px solid var(--accent-color, #7ecfdc); }
+.pv-sub .pv-user { color: v-bind(accentCssVar); }
+.pv-sub-badge { background: rgba(126,207,220,0.2); color: #7ecfdc; }
+
+.pv-gift { background: rgba(168,85,247,0.14); border-color: rgba(168,85,247,0.3); border-left: 3px solid #a855f7; }
+.pv-gift .pv-user { color: #c084fc; }
+.pv-gift-badge { background: rgba(168,85,247,0.25); color: #c084fc; }
+
+.pv-bits { background: rgba(250,204,21,0.12); border-color: rgba(250,204,21,0.28); border-left: 3px solid #facc15; }
+.pv-bits .pv-user { color: #facc15; }
+.pv-bits-badge { background: rgba(250,204,21,0.22); color: #facc15; }
 /* #endregion */
 </style>
