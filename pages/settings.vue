@@ -3,7 +3,7 @@ const { settings: s, save, reset, load, buildObsUrl } = useOverlaySettings()
 
 onMounted(() => load())
 
-const modal = ref<boolean>(false)
+// const modal = ref<boolean>(false)
 
 /* OBS URL */
 const obsUrl = computed(() => {
@@ -12,7 +12,7 @@ const obsUrl = computed(() => {
     const basePath = path.endsWith('/settings')
         ? path.slice(0, -'/settings'.length) + '/'
         : path.replace(/\/settings\/?$/, '/')
-    return buildObsUrl(window.location.origin + basePath)
+    return buildObsUrl(window.location.origin + basePath + 'chat/')
 })
 
 /* Copy URL */
@@ -242,7 +242,7 @@ const previewMsgs = computed(() => [
         <div class="bg-grid" aria-hidden="true" />
         <div class="bg-glow" aria-hidden="true" />
 
-        <!-- #region: HEADER -->
+        <!-- HEADER -->
         <header class="page-header">
             <div class="header-inner">
                 <div class="logo-mark">
@@ -257,7 +257,6 @@ const previewMsgs = computed(() => [
                 </div>
             </div>
         </header>
-        <!-- #endregion -->
 
         <!--  MAIN -->
         <main class="main-layout">
@@ -311,35 +310,6 @@ const previewMsgs = computed(() => [
                         </div>
                     </div>
                 </div>
-
-                <!-- OBS URL Card -->
-                <!-- <div class="obs-url-card">
-                    <div class="obs-url-header">
-                        <span class="obs-url-title">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <rect x="2" y="3" width="20" height="14" rx="2" />
-                                <line x1="8" y1="21" x2="16" y2="21" />
-                                <line x1="12" y1="17" x2="12" y2="21" />
-                            </svg>
-                            OBS Browser Source URL
-                        </span>
-                        <span class="obs-url-badge">copy แล้ววางใน OBS</span>
-                    </div>
-
-                    <div class="obs-url-box">
-                        <code class="obs-url-text">{{ obsUrl }}</code>
-                    </div>
-
-                    <button class="btn btn-obs" @click="handleCopyUrl">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
-                            <rect x="9" y="9" width="13" height="13" rx="2" />
-                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                        </svg>
-                        {{ copied ? '✓ Copied!' : 'Copy URL' }}
-                    </button>
-                </div> -->
             </div>
 
             <div class="flex flex-col gap-4">
@@ -454,6 +424,76 @@ const previewMsgs = computed(() => [
                         </div>
                     </section>
 
+                    <!-- Preview Background -->
+                     <section class="panel">
+                    <h2 class="panel-title"><span class="panel-icon">🖼️</span> Preview Background</h2>
+
+                    <!-- Mode tabs -->
+                    <div class="bg-mode-tabs">
+                        <button v-for="m in (['gradient','solid','image','none'] as const)" :key="m"
+                            class="bg-mode-tab" :class="{ active: s.previewBgMode === m }"
+                            @click="s.previewBgMode = m; debouncedSave()">
+                            {{ m === 'gradient' ? '🌈 Gradient' : m === 'solid' ? '⬛ Solid' : m === 'image' ? '🖼 Image' : '⬜ None' }}
+                        </button>
+                    </div>
+
+                    <!-- Gradient controls -->
+                    <template v-if="s.previewBgMode === 'gradient'">
+                        <div class="field-row">
+                            <div class="field">
+                                <label class="field-label">Color 1</label>
+                                <div class="color-row">
+                                    <input type="color" v-model="s.previewBgColor" class="color-swatch" @input="debouncedSave" />
+                                    <input v-model="s.previewBgColor" class="input input-sm" @input="debouncedSave" />
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Color 2</label>
+                                <div class="color-row">
+                                    <input type="color" v-model="s.previewBgColor2" class="color-swatch" @input="debouncedSave" />
+                                    <input v-model="s.previewBgColor2" class="input input-sm" @input="debouncedSave" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Angle {{ s.previewBgAngle }}°</label>
+                            <input type="range" v-model.number="s.previewBgAngle" min="0" max="360" class="slider" @input="debouncedSave" />
+                        </div>
+                    </template>
+
+                    <!-- Solid controls -->
+                    <template v-if="s.previewBgMode === 'solid'">
+                        <div class="field">
+                            <label class="field-label">Color</label>
+                            <div class="color-row">
+                                <input type="color" v-model="s.previewBgColor" class="color-swatch" @input="debouncedSave" />
+                                <input v-model="s.previewBgColor" class="input input-sm" @input="debouncedSave" />
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Image upload controls -->
+                    <template v-if="s.previewBgMode === 'image'">
+                        <div class="bg-upload-area">
+                            <img v-if="s.previewBgImage" :src="s.previewBgImage" class="bg-upload-preview" alt="preview bg" />
+                            <div v-else class="bg-upload-placeholder">
+                                <span>ยังไม่มีรูป</span>
+                            </div>
+                            <div class="bg-upload-actions">
+                                <label class="badge-upload-btn" style="width:auto; padding: 7px 14px;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                                        <polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                                    </svg>
+                                    Upload Image
+                                    <input type="file" accept="image/*" class="badge-file-input" @change="handlePreviewBgUpload" />
+                                </label>
+                                <button v-if="s.previewBgImage" class="btn btn-ghost" style="padding:7px 12px; font-size:12px;" @click="clearPreviewBgImage">✕ ลบรูป</button>
+                            </div>
+                        </div>
+                    </template>
+                </section>
+
                     <!-- Username colors -->
                     <section class="panel">
                         <h2 class="panel-title"><span class="panel-icon">⚙️</span> Username colors</h2>
@@ -525,7 +565,7 @@ const previewMsgs = computed(() => [
         </main>
     </div>
 
-    <Modal v-model:open="modal">
+    <!-- <Modal v-model:open="modal">
         <template v-if="s.previewBgMode === 'image'">
             <div class="bg-upload-area">
                 <img v-if="s.previewBgImage" :src="s.previewBgImage" class="bg-upload-preview" alt="preview bg" />
@@ -548,7 +588,7 @@ const previewMsgs = computed(() => [
                 </div>
             </div>
         </template>
-    </Modal>
+    </Modal> -->
 </template>
 
 <style scoped>
@@ -656,12 +696,10 @@ const previewMsgs = computed(() => [
     margin: 0 auto;
     padding: 32px 24px 60px;
     display: flex;
+    justify-content: center;
 
-    /* grid-template-columns: 440px 1fr; */
     gap: 32px;
-    /* align-items: start; */
     overflow: hidden;
-    background-color: rgba(73, 98, 126, 0.342);
 }
 
 @media (max-width: 860px) {
@@ -1114,7 +1152,7 @@ const previewMsgs = computed(() => [
     transform: scale(0.97);
 }
 
-/* PREVIEW */
+/* #region: PREVIEW */
 .preview-col {
     display: flex;
     flex-direction: column;
@@ -1212,4 +1250,72 @@ const previewMsgs = computed(() => [
     font-family: var(--font-body-ui);
     transition: background 0.15s, border-color 0.15s, color 0.15s, font-size 0.2s;
 }
+/* #endregion */
+
+/* #region: PREVIEW BACKGROUND CONTROLS */
+.bg-mode-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.bg-mode-tab {
+    flex: 1;
+    min-width: 72px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: var(--font-body-ui);
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    white-space: nowrap;
+}
+
+.bg-mode-tab:hover {
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+.bg-mode-tab.active {
+    border-color: v-bind(accentCssVar);
+    color: v-bind(accentCssVar);
+    background: color-mix(in srgb, v-bind(accentCssVar) 10%, transparent);
+}
+
+.bg-upload-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.bg-upload-preview {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.bg-upload-placeholder {
+    width: 100%;
+    height: 80px;
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-subtle);
+    font-size: 12px;
+}
+
+.bg-upload-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+/* #endregion */
 </style>
