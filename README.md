@@ -103,6 +103,10 @@ npm run dev
 - [ ] เพิ่ม option ปรับ layout (เช่น bubble shape, spacing, animation)
 - [ ] เพิ่ม option ปรับ font family + weight
 - [✓] เพิ่มการเปลี่ยนพื้นหลัง (background) ของ preview (เช่น gradient, image)
+- [ ] เพิ่มการปรับ horizontal/vertical ของ chat bubble (เช่น ให้ bubble เริ่มจากขอบซ้ายหรือขวา)
+- [ ] เพิ่มการปรับเอียงของ chat bubble (เช่น ให้ bubble เอียงเล็กน้อยเพื่อความ dynamic)
+- [ ] เพิ่มรูปแบบของ chat bubble เป็นตัวเลือกต่าง ๆ ตาม Themes Design หรือปรับให้สามารถแสดงเป็นแชทแนวนอนได้ (เหมาะสำหรับสตรีมที่มีพื้นที่แนวตั้งจำกัด)
+- [ ] เพิ่มการรองรับ Youtube Chat (ถ้าใครอยากทำเพิ่มก็ได้)
 
 — UX/UI
 - [✓] เพิ่ม loading ก่อนเข้าหน้า settings (ตอนดึงข้อมูลจาก Twitch API)
