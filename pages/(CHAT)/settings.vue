@@ -54,6 +54,35 @@ function debouncedSave() {
 }
 
 /* ════════════════════════════════════════════
+   EVENTSUB — Token helper
+════════════════════════════════════════════ */
+/** toggle แสดง/ซ่อน token */
+const showToken = ref(false)
+
+/**
+ * สร้าง Twitch OAuth URL สำหรับขอ Token
+ * User กด "ขอ Token" → เปิดหน้า Twitch authorize
+ * หลัง authorize → redirect กลับ localhost พร้อม token ใน #fragment
+ */
+const twitchAuthUrl = computed(() => {
+    const clientId = s.value.twitchClientId?.trim()
+    if (!clientId) return ''
+    const params = new URLSearchParams({
+        response_type: 'token',
+        client_id:     clientId,
+        redirect_uri:  'http://localhost',
+        scope:         'moderator:read:followers',
+        force_verify:  'true',
+    })
+    return `https://id.twitch.tv/oauth2/authorize?${params}`
+})
+
+/** สถานะ EventSub credentials */
+const eventSubReady = computed(() =>
+    !!(s.value.twitchClientId?.trim() && s.value.twitchToken?.trim())
+)
+
+/* ════════════════════════════════════════════
    PREVIEW BACKGROUND
 ════════════════════════════════════════════ */
 const previewBgStyle = computed(() => {
@@ -460,6 +489,134 @@ function bitsEmojiPreview(bits: number) {
                                     @input="debouncedSave" />
                                 <span class="slider-val">{{ s.maxMessages }}</span>
                             </div>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">
+                                Message lifetime
+                                <span class="lifetime-val">{{ s.msgLifetime === 0 ? '∞ ไม่ fade' : `${s.msgLifetime}s` }}</span>
+                            </label>
+                            <input type="range" v-model.number="s.msgLifetime" min="0" max="120" step="5" class="slider"
+                                @input="debouncedSave" />
+                            <span class="field-hint">
+                                {{ s.msgLifetime === 0 ? 'ข้อความจะอยู่จนครบ max messages' : `ข้อความจะ fade ออกหลัง ${s.msgLifetime} วินาที` }}
+                            </span>
+                        </div>
+                    </section>
+
+                    <!-- ══════════════════════════════════════
+                         Follow Alerts (EventSub)
+                         ใช้ Twitch EventSub WebSocket API
+                         ต้องการ Client ID + OAuth Token
+                    ══════════════════════════════════════ -->
+                    <section class="panel panel-eventsub">
+                        <h2 class="panel-title">
+                            <span class="panel-icon">🌸</span>
+                            Follow Alerts
+                            <span class="eventsub-status-pill" :class="eventSubReady ? 'ready' : 'idle'">
+                                {{ eventSubReady ? '✓ พร้อมใช้' : 'ยังไม่ได้ตั้งค่า' }}
+                            </span>
+                        </h2>
+
+                        <p class="panel-desc">
+                            Follow Alert ต้องใช้ <strong>Twitch EventSub API</strong> ซึ่งต้องการ Client ID และ OAuth Token
+                            (IRC ที่ใช้อยู่ปกติไม่รองรับ follow events)
+                            <br><br>
+                            ข้อมูลนี้จะถูกเก็บใน <code>localStorage</code> เท่านั้น — <strong>ไม่ถูกส่งผ่าน URL</strong>
+                            เพื่อความปลอดภัย
+                        </p>
+
+                        <!-- Step 1: Client ID -->
+                        <div class="eventsub-step">
+                            <div class="step-num">1</div>
+                            <div class="step-body">
+                                <label class="field-label">Client ID
+                                    <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener"
+                                        class="step-link">สร้าง App ที่ Twitch Dev Console →</a>
+                                </label>
+                                <p class="step-hint">
+                                    ใส่ <code>http://localhost</code> ใน OAuth Redirect URLs ของ App
+                                </p>
+                                <input
+                                    v-model="s.twitchClientId"
+                                    class="input input-mono"
+                                    placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                    @input="debouncedSave"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Step 2: OAuth Token -->
+                        <div class="eventsub-step">
+                            <div class="step-num">2</div>
+                            <div class="step-body">
+                                <label class="field-label">OAuth Token
+                                    <span class="scope-tag">scope: moderator:read:followers</span>
+                                </label>
+                                <p class="step-hint">
+                                    กด "ขอ Token" → authorize ใน Twitch → copy ค่า
+                                    <code>access_token</code> จาก URL หลัง redirect มาใส่ที่นี่
+                                </p>
+
+                                <!-- ปุ่มขอ token — disabled ถ้ายังไม่มี Client ID -->
+                                <a
+                                    v-if="twitchAuthUrl"
+                                    :href="twitchAuthUrl"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="btn-get-token"
+                                >
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                                        <polyline points="15 3 21 3 21 9"/>
+                                        <line x1="10" y1="14" x2="21" y2="3"/>
+                                    </svg>
+                                    ขอ Token จาก Twitch
+                                </a>
+                                <span v-else class="btn-get-token disabled">
+                                    ใส่ Client ID ก่อนเพื่อขอ Token
+                                </span>
+
+                                <!-- Token input (toggle show/hide) -->
+                                <div class="token-input-wrap">
+                                    <input
+                                        v-model="s.twitchToken"
+                                        :type="showToken ? 'text' : 'password'"
+                                        class="input input-mono"
+                                        placeholder="oauth:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                        autocomplete="off"
+                                        spellcheck="false"
+                                        @input="debouncedSave"
+                                    />
+                                    <button
+                                        type="button"
+                                        class="token-eye-btn"
+                                        @click="showToken = !showToken"
+                                        :title="showToken ? 'ซ่อน Token' : 'แสดง Token'"
+                                    >
+                                        <svg v-if="!showToken" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                            <circle cx="12" cy="12" r="3"/>
+                                        </svg>
+                                        <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/>
+                                            <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/>
+                                            <line x1="1" y1="1" x2="23" y2="23"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ข้อความแสดงสถานะ -->
+                        <div v-if="eventSubReady" class="eventsub-ready-msg">
+                            ✅ ตั้งค่าครบแล้ว — Follow alerts จะทำงานเมื่อเปิด OBS overlay
+                            (OBS Browser Source ต้องใช้ browser profile เดียวกับที่ตั้งค่าไว้)
+                        </div>
+                        <div v-else class="eventsub-warn-msg">
+                            ⚠️ ยังไม่ได้ตั้งค่า — Follow alerts จะไม่ทำงาน
+                            (แต่ chat, sub, raid, bits ยังทำงานปกติผ่าน IRC)
                         </div>
                     </section>
 
@@ -954,6 +1111,27 @@ function bitsEmojiPreview(bits: number) {
     color: v-bind(accentCssVar);
     min-width: 28px;
     text-align: right;
+}
+
+.lifetime-val {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    color: v-bind(accentCssVar);
+    background: color-mix(in srgb, v-bind(accentCssVar) 12%, transparent);
+    border: 1px solid color-mix(in srgb, v-bind(accentCssVar) 30%, transparent);
+    border-radius: 5px;
+    padding: 1px 7px;
+    margin-left: 7px;
+    letter-spacing: 0.03em;
+    vertical-align: middle;
+}
+
+.field-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-top: -4px;
 }
 
 .slider {
@@ -1495,4 +1673,170 @@ function bitsEmojiPreview(bits: number) {
 .pv-bits .pv-user { color: #facc15; }
 .pv-bits-badge { background: rgba(250,204,21,0.22); color: #facc15; }
 /* #endregion */
+
+/* ════════════════════════════════════════════
+   EVENTSUB PANEL
+════════════════════════════════════════════ */
+
+/* panel มี accent border top เพื่อบ่งบอกว่า special */
+.panel-eventsub {
+    border-top: 2px solid rgba(244, 63, 94, 0.35);
+}
+
+/* pill แสดงสถานะ EventSub */
+.eventsub-status-pill {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-left: auto;
+    letter-spacing: 0.03em;
+}
+.eventsub-status-pill.idle  { background: rgba(100,100,120,0.3); color: var(--text-muted); }
+.eventsub-status-pill.ready { background: rgba(34,197,94,0.18);  color: #4ade80; }
+
+/* step layout */
+.eventsub-step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.step-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(244,63,94,0.2);
+    color: #fb7185;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.step-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.step-link {
+    font-size: 11px;
+    color: v-bind(accentCssVar);
+    margin-left: 6px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    opacity: 0.8;
+}
+.step-link:hover { opacity: 1; }
+
+.step-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.step-hint code,
+.panel-desc code {
+    background: rgba(255,255,255,0.07);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.95em;
+}
+
+.scope-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    background: rgba(126,207,220,0.15);
+    color: #7ecfdc;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    font-family: monospace;
+    letter-spacing: 0.01em;
+}
+
+/* monospaced input สำหรับ credential */
+.input-mono {
+    font-family: monospace;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+}
+
+/* ปุ่มขอ Token */
+.btn-get-token {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-family: var(--font-body-ui);
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid rgba(244,63,94,0.35);
+    background: rgba(244,63,94,0.12);
+    color: #fb7185;
+    text-decoration: none;
+    transition: background 0.15s, border-color 0.15s;
+    width: fit-content;
+}
+.btn-get-token:hover {
+    background: rgba(244,63,94,0.2);
+    border-color: rgba(244,63,94,0.55);
+}
+.btn-get-token.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* token input + eye button */
+.token-input-wrap {
+    position: relative;
+}
+.token-input-wrap .input {
+    padding-right: 40px;
+}
+.token-eye-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
+}
+.token-eye-btn:hover { color: var(--text-primary); }
+
+/* สถานะ ready / warn */
+.eventsub-ready-msg {
+    font-size: 12px;
+    color: #4ade80;
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.2);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    line-height: 1.6;
+}
+.eventsub-warn-msg {
+    font-size: 12px;
+    color: #fbbf24;
+    background: rgba(245,158,11,0.1);
+    border: 1px solid rgba(245,158,11,0.2);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    line-height: 1.6;
+}
 </style>
